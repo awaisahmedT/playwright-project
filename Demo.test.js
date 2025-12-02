@@ -1,85 +1,96 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-// Define the base URL for the tests
-const BASE_URL = 'https://sauce-demo.myshopify.com/';
+// 1. PAGE OBJECT MODEL (POM) CLASS DEFINITION (Defined Locally)
+// This class contains all the locators and actions for the site.
+class ShopPage {
+    /**
+     * @param {import('@playwright/test').Page} page
+     */
+    constructor(page) {
+        this.page = page;
+        this.baseURL = 'https://sauce-demo.myshopify.com/';
 
-/**
- * Group of tests for the Sauce Demo Shopify site.
- */
-test.describe('Sauce Demo Shopify E2E Tests', () => {
+        // --- Locators ---
+        this.searchButton = page.getByRole('textbox', { name: 'Search' });
+        this.productLink = page.getByRole('link', { name: 'Grey jacket Grey jacket £' });
+        this.addToCartButton = page.getByRole('button', { name: 'Add to Cart' });
+        this.cartDrawerContainer = page.locator('.cart-drawer-container');
+        this.cartItemTitle = page.locator('.cart-item-details a.cart-item-title');
+        this.cartIconCount = page.locator('.header-cart-count');
+        this.checkoutButtonInDrawer = page.getByRole('button', { name: 'Checkout' });
+        this.checkoutEmailField = page.locator('#checkout_email');
+    }
 
-    // Test 1: Verify the homepage loads and has the correct title
-    test('should load the homepage and verify the title', async ({ page }) => {
-        // Navigate to the base URL
-        await page.goto(BASE_URL);
+    // --- Actions ---
 
-        // Assert that the page title contains "Sauce"
-        await expect(page).toHaveTitle(/Sauce/);
+    async goto() {
+        await this.page.goto(this.baseURL);
+        await expect(this.page).toHaveTitle(/Sauce Demo/);
+    }
 
-        // Assert that the main product listing container is visible
-        const productGrid = page.locator('.product-grid');
-        await expect(productGrid).toBeVisible();
-        console.log('Test 1: Homepage title and product grid verified successfully.');
+    async searchAndSelectProduct(searchTerm) {
+        await this.searchButton.click();
+        await this.searchButton.fill(searchTerm);
+
+        // Wait for search results to appear
+        await expect(this.productLink).toBeVisible();
+        await this.productLink.click();
+
+        // Wait for Product Detail Page (PDP) to load
+        await expect(this.addToCartButton).toBeVisible();
+    }
+
+    async addItemToCart() {
+        await this.addToCartButton.click();
+        // Wait for the cart drawer to slide open
+        await expect(this.cartDrawerContainer).toBeVisible();
+    }
+
+    async proceedToCheckout() {
+        await this.checkoutButtonInDrawer.click();
+        // Wait for navigation to the secure Shopify checkout domain
+        await expect(this.page.url()).toContain('checkout.shopify.com');
+    }
+
+    // --- Assertions ---
+
+    async verifyItemInCart(expectedName) {
+        await expect(this.cartItemTitle).toHaveText(expectedName);
+        await expect(this.cartIconCount).toHaveText('1');
+    }
+
+    async verifyCheckoutPageLoaded() {
+        await expect(this.checkoutEmailField).toBeVisible();
+    }
+}
+
+// -------------------------------------------------------------
+// 2. TEST SCENARIO DEFINITION (The code the Playwright runner detects)
+// -------------------------------------------------------------
+
+test.describe('E2E Shopping Flow Validation', () => {
+
+    test('SCN_001: Validate successful product search and checkout initiation', async ({ page }) => {
+
+        // Instantiate the locally defined Page Object Model
+        const shopPage = new ShopPage(page);
+        const productName = 'Grey jacket';
+
+        await test.step('1. Navigate and Search', async () => {
+            await shopPage.goto();
+            await shopPage.searchAndSelectProduct('shirt');
+        });
+
+        await test.step('2. Add to Cart and Verify', async () => {
+            await shopPage.addItemToCart();
+            await shopPage.verifyItemInCart(productName);
+        });
+
+        await test.step('3. Proceed to Checkout', async () => {
+            await shopPage.proceedToCheckout();
+            await shopPage.verifyCheckoutPageLoaded();
+        });
     });
 
-    // Test 2: Verify navigation to a specific product detail page
-    test('should navigate to a product detail page', async ({ page }) => {
-        await page.goto(BASE_URL);
-
-        // Find the link for the first product (assuming it has a specific name or structure)
-        // We look for a link that is part of a product item and has text that includes "Backpack"
-        const productLink = page.locator('a:has-text("Sauce Labs Backpack")').first();
-
-        // Check if the link exists before clicking
-        await expect(productLink).toBeVisible();
-
-        // Click the product link
-        await productLink.click();
-
-        // Assert that the URL contains '/products/' and the product handle
-        await expect(page).toHaveURL(/.*\/products\/sauce-labs-backpack/);
-
-        // Assert that the product name is visible on the detail page
-        const productNameHeader = page.getByRole('heading', { name: 'Sauce Labs Backpack' });
-        await expect(productNameHeader).toBeVisible();
-        console.log('Test 2: Product detail navigation verified successfully.');
-    });
-
-    // Test 3: Test the Add to Cart functionality
-    test('should add an item to the cart and verify the cart count', async ({ page }) => {
-        // Navigate directly to a product page to simplify the test flow
-        await page.goto(`${BASE_URL}products/sauce-labs-backpack`);
-
-        // The Add to Cart button is usually a button with a specific text or role
-        // We'll look for a button with the text "Add to cart"
-        const addToCartButton = page.getByRole('button', { name: 'Add to cart' });
-
-        // Click the button to add the item to the cart
-        await addToCartButton.click();
-
-        // Wait for the mini-cart or confirmation element to appear.
-        // In this Shopify theme, a sidebar usually slides in, or the cart icon updates.
-        // We will look for the cart notification or the cart icon that displays the item count.
-
-        // The cart icon on this site typically uses a specific class or ID to display the count.
-        // Let's assume the cart icon has a visible text/number indicating the count.
-        // We'll look for an element that represents the cart count badge (often a span)
-        const cartCountBadge = page.locator('.cart-notification__count');
-
-        // Wait for the cart count to update and verify it's '1'
-        await expect(cartCountBadge).toHaveText('1');
-
-        // Click on the View Cart button inside the notification to navigate to the cart page
-        const viewCartButton = page.getByRole('link', { name: 'View cart' });
-        await viewCartButton.click();
-
-        // Verify we are on the cart page
-        await expect(page).toHaveURL(/.*\/cart/);
-
-        // Verify the added item is present in the cart
-        const itemInCart = page.getByText('Sauce Labs Backpack');
-        await expect(itemInCart).toBeVisible();
-        console.log('Test 3: Add to Cart functionality verified successfully.');
-    });
 });
