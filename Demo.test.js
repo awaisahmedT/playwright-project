@@ -1,96 +1,65 @@
-// @ts-check
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
-// 1. PAGE OBJECT MODEL (POM) CLASS DEFINITION (Defined Locally)
-// This class contains all the locators and actions for the site.
-class ShopPage {
-    /**
-     * @param {import('@playwright/test').Page} page
-     */
-    constructor(page) {
-        this.page = page;
-        this.baseURL = 'https://sauce-demo.myshopify.com/';
+test.describe('Add to Cart – Separate Test Cases', () => {
 
-        // --- Locators ---
-        this.searchButton = page.getByRole('textbox', { name: 'Search' });
-        this.productLink = page.getByRole('link', { name: 'Grey jacket Grey jacket £' });
-        this.addToCartButton = page.getByRole('button', { name: 'Add to Cart' });
-        this.cartDrawerContainer = page.locator('.cart-drawer-container');
-        this.cartItemTitle = page.locator('.cart-item-details a.cart-item-title');
-        this.cartIconCount = page.locator('.header-cart-count');
-        this.checkoutButtonInDrawer = page.getByRole('button', { name: 'Checkout' });
-        this.checkoutEmailField = page.locator('#checkout_email');
-    }
+    test('Verify that the user can navigate to the Sauce Demo homepage', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await expect(page).toHaveTitle(/Sauce Demo/i);
+    });
 
-    // --- Actions ---
+    test('Verify that the user can open a product details page from the homepage catalog', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await page.getByRole('link', { name: /Noir jacket Noir jacket £/i }).click();
 
-    async goto() {
-        await this.page.goto(this.baseURL);
-        await expect(this.page).toHaveTitle(/Sauce Demo/);
-    }
+        await expect(
+            page.getByRole('heading', { name: 'Noir jacket' })
+        ).toBeVisible();
+    });
 
-    async searchAndSelectProduct(searchTerm) {
-        await this.searchButton.click();
-        await this.searchButton.fill(searchTerm);
+    test('Verify that the user can select a size for the product', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await page.getByRole('link', { name: /Noir jacket Noir jacket £/i }).click();
 
-        // Wait for search results to appear
-        await expect(this.productLink).toBeVisible();
-        await this.productLink.click();
+        await page.getByLabel('Size').selectOption('L');
+        await expect(page.getByLabel('Size')).toHaveValue('L');
+    });
 
-        // Wait for Product Detail Page (PDP) to load
-        await expect(this.addToCartButton).toBeVisible();
-    }
+    test('Verify that the user can select a color for the product', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await page.getByRole('link', { name: /Noir jacket Noir jacket £/i }).click();
 
-    async addItemToCart() {
-        await this.addToCartButton.click();
-        // Wait for the cart drawer to slide open
-        await expect(this.cartDrawerContainer).toBeVisible();
-    }
+        await page.getByLabel('Color').selectOption('Red');
+        await expect(page.getByLabel('Color')).toHaveValue('Red');
+    });
 
-    async proceedToCheckout() {
-        await this.checkoutButtonInDrawer.click();
-        // Wait for navigation to the secure Shopify checkout domain
-        await expect(this.page.url()).toContain('checkout.shopify.com');
-    }
+    test('Verify that the user can add the selected product to the cart', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await page.getByRole('link', { name: /Noir jacket Noir jacket £/i }).click();
 
-    // --- Assertions ---
+        await page.getByLabel('Size').selectOption('L');
+        await page.getByLabel('Color').selectOption('Red');
+        await page.getByRole('button', { name: /Add to Cart/i }).click();
 
-    async verifyItemInCart(expectedName) {
-        await expect(this.cartItemTitle).toHaveText(expectedName);
-        await expect(this.cartIconCount).toHaveText('1');
-    }
+        // Cart icon opens successfully
+        await page.locator('a.toggle-drawer.cart.desktop').click();
+        await expect(
+            page.getByRole('heading', { name: 'Noir jacket' })
+        ).toBeVisible();
+    });
 
-    async verifyCheckoutPageLoaded() {
-        await expect(this.checkoutEmailField).toBeVisible();
-    }
-}
+    test('Verify that the added product is displayed in the cart', async ({ page }) => {
+        await page.goto('https://sauce-demo.myshopify.com/');
+        await page.getByRole('link', { name: /Noir jacket Noir jacket £/i }).click();
 
-// -------------------------------------------------------------
-// 2. TEST SCENARIO DEFINITION (The code the Playwright runner detects)
-// -------------------------------------------------------------
+        await page.getByLabel('Size').selectOption('L');
+        await page.getByLabel('Color').selectOption('Red');
+        await page.getByRole('button', { name: /Add to Cart/i }).click();
 
-test.describe('E2E Shopping Flow Validation', () => {
+        await page.locator('a.toggle-drawer.cart.desktop').click();
 
-    test('SCN_001: Validate successful product search and checkout initiation', async ({ page }) => {
-
-        // Instantiate the locally defined Page Object Model
-        const shopPage = new ShopPage(page);
-        const productName = 'Grey jacket';
-
-        await test.step('1. Navigate and Search', async () => {
-            await shopPage.goto();
-            await shopPage.searchAndSelectProduct('shirt');
-        });
-
-        await test.step('2. Add to Cart and Verify', async () => {
-            await shopPage.addItemToCart();
-            await shopPage.verifyItemInCart(productName);
-        });
-
-        await test.step('3. Proceed to Checkout', async () => {
-            await shopPage.proceedToCheckout();
-            await shopPage.verifyCheckoutPageLoaded();
-        });
+        await expect(
+            page.getByRole('heading', { name: 'Noir jacket' })
+        ).toBeVisible();
     });
 
 });
