@@ -26,8 +26,16 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run Playwright tests
-        run: npx playwright test
+          - name: Debug project structure
+            run: |
+               pwd
+                ls
+                ls -la tests
+
+
+      -  name: Run Playwright tests
+        run: npx playwright test --config=playwright.config.js
+
 
       - name: Upload Playwright report
         if: always()
