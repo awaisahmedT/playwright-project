@@ -1,5 +1,5 @@
 import { Locator, Page } from '@playwright/test';
-import { BasePage } from './base.page.ts';
+import { BasePage } from './base.page';
 
 // Handles all login page interactions
 export class LoginPage extends BasePage {
