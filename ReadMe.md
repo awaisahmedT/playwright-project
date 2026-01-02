@@ -36,3 +36,7 @@ npx playwright test
 * Enhances maintainability
 * Reduces duplication
 * Makes tests scalable
+
+
+Regards,
+Awais
