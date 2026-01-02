@@ -12,7 +12,7 @@ export default defineConfig({
             name: 'chromium',
             use: {
                 browserName: 'chromium',
-                headless: false
+                headless: true
             }
         },
         {
@@ -20,7 +20,7 @@ export default defineConfig({
             use: {
                 browserName: 'chromium',
                 channel: 'chrome',
-                headless: false
+                headless: true
             }
         },
         {
