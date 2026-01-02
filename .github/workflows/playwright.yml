@@ -34,7 +34,7 @@ jobs:
 
 
       - name: Run Playwright tests
-        run: npx playwright test --config=playwright.config.js --headless
+        run: npx playwright test --config=playwright.config.js 
 
       - name: Upload Playwright report
         if: always()
